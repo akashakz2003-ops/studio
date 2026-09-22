@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+const isVercel = Boolean(process.env.VERCEL);
+const DATA_DIR = isVercel ? path.join('/tmp', 'data') : path.join(__dirname, '..', 'data');
 const DB_FILE = path.join(DATA_DIR, 'studio_finance.db');
 
 let db = null;
@@ -38,6 +39,18 @@ function saveDb() {
 
 async function initDb() {
   if (db) return db;
+
+  if (isVercel && !fs.existsSync(DB_FILE)) {
+    const bundledDb = path.join(__dirname, '..', 'data', 'studio_finance.db');
+    if (fs.existsSync(bundledDb)) {
+      try {
+        if (!fs.existsSync(DATA_DIR)) {
+          fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+        fs.copyFileSync(bundledDb, DB_FILE);
+      } catch (_) {}
+    }
+  }
 
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });

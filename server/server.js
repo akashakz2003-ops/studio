@@ -10,6 +10,21 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Ensure database is initialized before handling any requests (crucial for Vercel serverless)
+let dbInitPromise = null;
+app.use(async (req, res, next) => {
+  try {
+    if (!dbInitPromise) {
+      dbInitPromise = initDb();
+    }
+    await dbInitPromise;
+    next();
+  } catch (err) {
+    console.error('Failed to initialize database:', err);
+    res.status(500).json({ success: false, error: 'Database initialization failed: ' + err.message });
+  }
+});
+
 // API endpoints
 app.use('/api', apiRoutes);
 
@@ -49,4 +64,9 @@ async function startServer() {
   }
 }
 
-startServer();
+// Only listen when executed directly via Node CLI
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;
