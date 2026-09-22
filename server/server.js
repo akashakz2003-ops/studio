@@ -25,8 +25,9 @@ app.use(async (req, res, next) => {
   }
 });
 
-// API endpoints
+// API endpoints (mounted on both /api and root / for Vercel serverless compatibility)
 app.use('/api', apiRoutes);
+app.use(apiRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -40,13 +41,19 @@ app.use(express.static(clientDistPath));
 // Fallback for SPA routing (Express 5 compatible)
 app.use((req, res, next) => {
   if (req.method !== 'GET') return next();
-  if (req.path.startsWith('/api')) return next();
+  if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/settings') || req.path.startsWith('/daily-sales') || req.path.startsWith('/transactions') || req.path.startsWith('/expenses') || req.path.startsWith('/rent-days') || req.path.startsWith('/reports') || req.path.startsWith('/export') || req.path.startsWith('/dashboard')) return next();
   const indexHtml = path.join(clientDistPath, 'index.html');
   res.sendFile(indexHtml, err => {
     if (err) {
       res.status(200).send('Studio Financial Management API server is running on port ' + PORT);
     }
   });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled API error:', err);
+  res.status(500).json({ success: false, error: err.message || 'Internal server error' });
 });
 
 async function startServer() {

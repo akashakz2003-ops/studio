@@ -1,4 +1,4 @@
-const initSqlJs = require('sql.js');
+const initSqlJs = require('sql.js/dist/sql-asm.js');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
@@ -87,8 +87,8 @@ async function initDb() {
       currency_symbol TEXT NOT NULL DEFAULT '₹',
       currency_code TEXT NOT NULL DEFAULT 'INR',
       rent_default_applicable INTEGER NOT NULL DEFAULT 1,
-      app_password TEXT NOT NULL DEFAULT '1234',
-      is_password_set INTEGER NOT NULL DEFAULT 0,
+      app_password TEXT NOT NULL DEFAULT '4567',
+      is_password_set INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -138,10 +138,10 @@ async function initDb() {
 
   // Migration for existing database
   try {
-    db.run(`ALTER TABLE settings ADD COLUMN app_password TEXT NOT NULL DEFAULT '1234'`);
+    db.run(`ALTER TABLE settings ADD COLUMN app_password TEXT NOT NULL DEFAULT '4567'`);
   } catch (_) {}
   try {
-    db.run(`ALTER TABLE settings ADD COLUMN is_password_set INTEGER NOT NULL DEFAULT 0`);
+    db.run(`ALTER TABLE settings ADD COLUMN is_password_set INTEGER NOT NULL DEFAULT 1`);
   } catch (_) {}
 
   // Ensure default settings exist
@@ -166,8 +166,8 @@ async function initDb() {
         '₹',
         'INR',
         1,
-        '1234',
-        0,
+        '4567',
+        1,
         now,
         now,
       ]
