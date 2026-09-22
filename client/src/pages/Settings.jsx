@@ -40,10 +40,12 @@ export default function Settings({
     rent_default_applicable: 1,
   });
 
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -71,6 +73,41 @@ export default function Settings({
     }));
   };
 
+  const handleUpdatePassword = async (e) => {
+    if (e) e.preventDefault();
+    if (!currentPassword.trim()) {
+      showToast('നിലവിലെ പാസ്‌വേഡ് നൽകുക (Current owner password required)', 'error');
+      return;
+    }
+    if (!newPassword.trim()) {
+      showToast('പുതിയ പാസ്‌വേഡ് നൽകുക (New password required)', 'error');
+      return;
+    }
+    if (newPassword.trim().length < 3) {
+      showToast('കുറഞ്ഞത് 3 അക്ഷരങ്ങൾ വേണം (Minimum 3 characters)', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast('പാസ്‌വേഡുകൾ തമ്മിൽ പൊരുത്തപ്പെടുന്നില്ല (Passwords do not match)', 'error');
+      return;
+    }
+
+    try {
+      setIsUpdatingPassword(true);
+      const res = await api.changePassword(currentPassword.trim(), newPassword.trim());
+      if (res.success) {
+        showToast('ഉടമസ്ഥന്റെ പാസ്‌വേഡ് മാറ്റി! (Owner password updated successfully)', 'success');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (err) {
+      showToast(err.message || 'Current password incorrect. Only owner can change.', 'error');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -88,32 +125,11 @@ export default function Settings({
       return;
     }
 
-    if (newPassword.trim()) {
-      if (newPassword.trim().length < 3) {
-        showToast('New password must be at least 3 characters', 'error');
-        return;
-      }
-      if (newPassword !== confirmPassword) {
-        showToast('Passwords do not match', 'error');
-        return;
-      }
-    }
-
     try {
       setIsSaving(true);
-      const payload = { ...formData };
-      if (newPassword.trim()) {
-        payload.app_password = newPassword.trim();
-      }
-
-      const res = await api.updateSettings(payload);
+      const res = await api.updateSettings(formData);
       if (res.success) {
         showToast('Settings saved successfully! Calculations updated.', 'success');
-        if (newPassword.trim()) {
-          showToast('New password set successfully! (പാസ്‌വേഡ് മാറ്റി)', 'success');
-          setNewPassword('');
-          setConfirmPassword('');
-        }
         onSettingsUpdated?.(res.data);
       }
     } catch (err) {
@@ -397,7 +413,7 @@ export default function Settings({
           <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
             <Lock className="w-4 h-4 text-indigo-600" />
             <h4 className="font-bold text-sm text-slate-900 uppercase tracking-wider">
-              5. Studio Password & Security (പാസ്‌വേഡ് സുരക്ഷ)
+              5. Studio Owner Password & Security (ഉടമസ്ഥന്റെ പാസ്‌വേഡ് സുരക്ഷ)
             </h4>
           </div>
 
@@ -405,16 +421,16 @@ export default function Settings({
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>New Unlock Password / PIN (പുതിയ പാസ്‌വേഡ്)</span>
+                  <KeyRound className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Current Owner Password (നിലവിലെ പാസ്‌വേഡ്)</span>
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password to change..."
-                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password to verify owner..."
+                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono"
                   />
                   <button
                     type="button"
@@ -424,6 +440,20 @@ export default function Settings({
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>New Password / PIN (പുതിയ പാസ്‌വേഡ്)</span>
+                </label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password (min 3 digits)..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                />
               </div>
 
               <div>
@@ -439,21 +469,27 @@ export default function Settings({
                 />
               </div>
 
-              <span className="text-[11px] text-slate-400 block">
-                പാസ്‌വേഡ് മാറ്റേണ്ടതില്ലെങ്കിൽ ഈ കോളങ്ങൾ ശൂന്യമായി വിടുക (Leave blank to keep existing password).
-              </span>
+              <button
+                type="button"
+                onClick={handleUpdatePassword}
+                disabled={isUpdatingPassword || !currentPassword || !newPassword}
+                className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>{isUpdatingPassword ? 'Updating...' : 'Update Owner Password (പാസ്‌വേഡ് മാറ്റുക)'}</span>
+              </button>
             </div>
 
             <div className="p-4 bg-indigo-50/70 rounded-2xl border border-indigo-100 text-xs text-indigo-950 flex flex-col justify-center space-y-2">
               <div className="flex items-center gap-1.5 font-bold text-indigo-900">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Security Protection Active</span>
+                <span>Owner Verification Protected</span>
               </div>
               <p className="text-[11px] text-indigo-900/80 leading-relaxed">
-                ആപ്പിലെ ദിവസേനയുള്ള വരുമാനവും ലാഭക്കണക്കുകളും സുരക്ഷിതമായി സൂക്ഷിക്കാൻ നിങ്ങൾ സെറ്റ് ചെയ്യുന്ന ഈ പാസ്‌വേഡ് അത്യന്താപേക്ഷിതമാണ്.
+                ഉടമസ്ഥന് മാത്രമേ നിലവിലെ പാസ്‌വേഡ് ഉപയോഗിച്ച് പുതിയ പാസ്‌വേഡ് മാറ്റാൻ സാധിക്കൂ. കൗണ്ടറിലുള്ള മറ്റാർക്കും പാസ്‌വേഡ് മാറ്റാൻ അനുവാദമില്ല.
               </p>
               <p className="text-[10px] text-slate-500">
-                The password you set here will be required whenever anyone opens the app.
+                Only the studio owner who enters the correct current password can update the password.
               </p>
             </div>
           </div>

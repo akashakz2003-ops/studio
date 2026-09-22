@@ -39,6 +39,14 @@ router.get('/auth/status', (req, res) => {
 
 router.post('/auth/setup-password', (req, res) => {
   try {
+    const existing = queryOne('SELECT is_password_set FROM settings WHERE id = 1');
+    if (existing && existing.is_password_set === 1) {
+      return res.status(403).json({
+        success: false,
+        error: 'Password already configured. Only the studio owner can change the password using their current password.',
+      });
+    }
+
     const { password } = req.body;
     if (!password || String(password).trim().length < 3) {
       return res.status(400).json({ success: false, error: 'Password must be at least 3 characters long' });
@@ -69,7 +77,7 @@ router.post('/auth/login', (req, res) => {
     }
 
     const settings = queryOne('SELECT * FROM settings WHERE id = 1');
-    const correctPassword = settings?.app_password || '1234';
+    const correctPassword = settings?.app_password || '4567';
 
     if (String(password).trim() === String(correctPassword).trim()) {
       return res.json({
@@ -91,15 +99,21 @@ router.post('/auth/login', (req, res) => {
 router.post('/auth/change-password', (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
+    if (!currentPassword) {
+      return res.status(400).json({ success: false, error: 'Current owner password is required' });
+    }
     if (!newPassword || String(newPassword).trim().length < 3) {
       return res.status(400).json({ success: false, error: 'New password must be at least 3 characters long' });
     }
 
     const settings = queryOne('SELECT * FROM settings WHERE id = 1');
-    const currentCorrect = settings?.app_password || '1234';
+    const currentCorrect = settings?.app_password || '4567';
 
     if (String(currentPassword).trim() !== String(currentCorrect).trim()) {
-      return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+      return res.status(401).json({
+        success: false,
+        error: 'Current password is incorrect. Only the studio owner can change the password.',
+      });
     }
 
     const now = new Date().toISOString();
@@ -108,7 +122,7 @@ router.post('/auth/change-password', (req, res) => {
       now,
     ]);
 
-    res.json({ success: true, message: 'Password changed successfully' });
+    res.json({ success: true, message: 'Owner password changed successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -146,11 +160,23 @@ router.put('/settings', (req, res) => {
       currency_code,
       rent_default_applicable,
       app_password,
+      current_password,
     } = req.body;
 
     const now = new Date().toISOString();
 
-    const isUpdatingPassword = Boolean(app_password !== undefined && app_password.trim());
+    const isUpdatingPassword = Boolean(app_password !== undefined && String(app_password).trim());
+
+    if (isUpdatingPassword) {
+      const currentSettings = queryOne('SELECT app_password FROM settings WHERE id = 1');
+      const expectedPassword = currentSettings?.app_password || '4567';
+      if (String(current_password).trim() !== String(expectedPassword).trim()) {
+        return res.status(401).json({
+          success: false,
+          error: 'Current owner password is incorrect. Only the studio owner can change the password.',
+        });
+      }
+    }
 
     run(
       `UPDATE settings SET

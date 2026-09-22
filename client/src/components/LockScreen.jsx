@@ -139,16 +139,6 @@ export default function LockScreen({
     }
   };
 
-  const handleSwitchToReset = () => {
-    if (window.confirm('പുതിയ പാസ്‌വേഡ് സെറ്റ് ചെയ്യണോ? (Do you want to reset and create a new studio password?)')) {
-      setIsPasswordSet(false);
-      setActiveField('new');
-      setNewPassword('');
-      setConfirmPassword('');
-      setError('');
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-slate-100 overflow-y-auto">
       {/* Background ambient lighting */}
@@ -394,17 +384,6 @@ export default function LockScreen({
                 </>
               )}
             </button>
-
-            {/* Safe Reset Link (No password revealed) */}
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={handleSwitchToReset}
-                className="text-[11px] text-slate-400 hover:text-indigo-300 underline underline-offset-4 transition-colors"
-              >
-                പാസ്‌വേഡ് മാറ്റണോ? (Reset / Change Password)
-              </button>
-            </div>
           </form>
         )}
       </div>

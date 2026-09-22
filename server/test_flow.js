@@ -75,15 +75,25 @@ async function runTests() {
     assert(typeof authStatus.data.isPasswordSet === 'boolean', 'Auth status returns isPasswordSet boolean');
     assert(authStatus.data.app_password === undefined, 'Auth status does NOT expose app_password');
 
-    // Test setup password
-    const setupRes = await request('/api/auth/setup-password', { method: 'POST', body: { password: 'test_pass_123' } });
-    assert(setupRes.status === 200 && setupRes.data.success, 'Setup password created successfully');
-
+    // Test login
     const wrongAuth = await request('/api/auth/login', { method: 'POST', body: { password: 'wrong_password' } });
     assert(wrongAuth.status === 401, 'Unauthorized for wrong password');
 
-    const correctAuth = await request('/api/auth/login', { method: 'POST', body: { password: 'test_pass_123' } });
-    assert(correctAuth.status === 200 && correctAuth.data.success, 'Authorized for custom configured password');
+    const correctAuth = await request('/api/auth/login', { method: 'POST', body: { password: '4567' } });
+    assert(correctAuth.status === 200 && correctAuth.data.success, 'Authorized for studio owner password (4567)');
+
+    // Test owner-only password change
+    const unauthorizedChange = await request('/api/auth/change-password', {
+      method: 'POST',
+      body: { currentPassword: 'wrong_current_password', newPassword: '8888' },
+    });
+    assert(unauthorizedChange.status === 401, 'Unauthorized password change rejected for wrong owner password');
+
+    const authorizedChange = await request('/api/auth/change-password', {
+      method: 'POST',
+      body: { currentPassword: '4567', newPassword: '4567' },
+    });
+    assert(authorizedChange.status === 200 && authorizedChange.data.success, 'Owner successfully verified and password confirmed as 4567');
 
     // 1. Check Initial Settings
     const sRes = await request('/api/settings');
