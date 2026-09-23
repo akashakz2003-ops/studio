@@ -26,10 +26,10 @@ function getDaysInMonth(year, month) {
 router.get('/auth/status', (req, res) => {
   try {
     const settings = queryOne('SELECT business_name, is_password_set FROM settings WHERE id = 1');
-    const isPasswordSet = Boolean(settings?.is_password_set);
     res.json({
       success: true,
-      isPasswordSet,
+      isPasswordRequired: false,
+      isPasswordSet: false,
       businessName: settings?.business_name || 'Photo & Photostat Studio',
     });
   } catch (err) {
@@ -39,30 +39,9 @@ router.get('/auth/status', (req, res) => {
 
 router.post('/auth/setup-password', (req, res) => {
   try {
-    const existing = queryOne('SELECT is_password_set FROM settings WHERE id = 1');
-    if (existing && existing.is_password_set === 1) {
-      return res.status(403).json({
-        success: false,
-        error: 'Password already configured. Only the studio owner can change the password using their current password.',
-      });
-    }
-
-    const { password } = req.body;
-    if (!password || String(password).trim().length < 3) {
-      return res.status(400).json({ success: false, error: 'Password must be at least 3 characters long' });
-    }
-
-    const now = new Date().toISOString();
-    run(`UPDATE settings SET app_password = ?, is_password_set = 1, updated_at = ? WHERE id = 1`, [
-      String(password).trim(),
-      now,
-    ]);
-
-    const settings = queryOne('SELECT business_name FROM settings WHERE id = 1');
     res.json({
       success: true,
-      message: 'Password set successfully',
-      businessName: settings?.business_name,
+      message: 'Password not required',
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -71,26 +50,12 @@ router.post('/auth/setup-password', (req, res) => {
 
 router.post('/auth/login', (req, res) => {
   try {
-    const { password } = req.body;
-    if (!password) {
-      return res.status(400).json({ success: false, error: 'Password is required' });
-    }
-
-    const settings = queryOne('SELECT * FROM settings WHERE id = 1');
-    const correctPassword = settings?.app_password || '4567';
-
-    if (String(password).trim() === String(correctPassword).trim()) {
-      return res.json({
-        success: true,
-        message: 'Studio unlocked successfully',
-        businessName: settings?.business_name,
-      });
-    } else {
-      return res.status(401).json({
-        success: false,
-        error: 'Incorrect password. Please try again.',
-      });
-    }
+    const settings = queryOne('SELECT business_name FROM settings WHERE id = 1');
+    res.json({
+      success: true,
+      message: 'Unlocked',
+      businessName: settings?.business_name,
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -98,31 +63,7 @@ router.post('/auth/login', (req, res) => {
 
 router.post('/auth/change-password', (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword) {
-      return res.status(400).json({ success: false, error: 'Current owner password is required' });
-    }
-    if (!newPassword || String(newPassword).trim().length < 3) {
-      return res.status(400).json({ success: false, error: 'New password must be at least 3 characters long' });
-    }
-
-    const settings = queryOne('SELECT * FROM settings WHERE id = 1');
-    const currentCorrect = settings?.app_password || '4567';
-
-    if (String(currentPassword).trim() !== String(currentCorrect).trim()) {
-      return res.status(401).json({
-        success: false,
-        error: 'Current password is incorrect. Only the studio owner can change the password.',
-      });
-    }
-
-    const now = new Date().toISOString();
-    run(`UPDATE settings SET app_password = ?, is_password_set = 1, updated_at = ? WHERE id = 1`, [
-      String(newPassword).trim(),
-      now,
-    ]);
-
-    res.json({ success: true, message: 'Owner password changed successfully' });
+    res.json({ success: true, message: 'Password disabled' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -136,7 +77,7 @@ router.get('/settings', (req, res) => {
     const settings = queryOne('SELECT * FROM settings WHERE id = 1');
     if (settings) {
       const { app_password, ...safeSettings } = settings;
-      safeSettings.is_password_set = Boolean(settings.is_password_set);
+      safeSettings.is_password_set = false;
       return res.json({ success: true, data: safeSettings });
     }
     res.json({ success: true, data: settings });
@@ -159,24 +100,9 @@ router.put('/settings', (req, res) => {
       currency_symbol,
       currency_code,
       rent_default_applicable,
-      app_password,
-      current_password,
     } = req.body;
 
     const now = new Date().toISOString();
-
-    const isUpdatingPassword = Boolean(app_password !== undefined && String(app_password).trim());
-
-    if (isUpdatingPassword) {
-      const currentSettings = queryOne('SELECT app_password FROM settings WHERE id = 1');
-      const expectedPassword = currentSettings?.app_password || '4567';
-      if (String(current_password).trim() !== String(expectedPassword).trim()) {
-        return res.status(401).json({
-          success: false,
-          error: 'Current owner password is incorrect. Only the studio owner can change the password.',
-        });
-      }
-    }
 
     run(
       `UPDATE settings SET
@@ -191,8 +117,6 @@ router.put('/settings', (req, res) => {
         currency_symbol = COALESCE(?, currency_symbol),
         currency_code = COALESCE(?, currency_code),
         rent_default_applicable = COALESCE(?, rent_default_applicable),
-        app_password = COALESCE(?, app_password),
-        is_password_set = CASE WHEN ? = 1 THEN 1 ELSE is_password_set END,
         updated_at = ?
       WHERE id = 1`,
       [
@@ -207,8 +131,6 @@ router.put('/settings', (req, res) => {
         currency_symbol !== undefined ? currency_symbol : null,
         currency_code !== undefined ? currency_code : null,
         rent_default_applicable !== undefined ? Number(rent_default_applicable) : null,
-        isUpdatingPassword ? app_password.trim() : null,
-        isUpdatingPassword ? 1 : 0,
         now,
       ]
     );
@@ -216,7 +138,7 @@ router.put('/settings', (req, res) => {
     const updated = queryOne('SELECT * FROM settings WHERE id = 1');
     if (updated) {
       const { app_password: _, ...safeUpdated } = updated;
-      safeUpdated.is_password_set = Boolean(updated.is_password_set);
+      safeUpdated.is_password_set = false;
       return res.json({ success: true, data: safeUpdated });
     }
     res.json({ success: true, data: updated });

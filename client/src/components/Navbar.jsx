@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Plus, RefreshCw, IndianRupee, Lock } from 'lucide-react';
+import { Calendar, Plus, RefreshCw, IndianRupee } from 'lucide-react';
 import { formatINR, formatDate, getTodayDateString } from '../utils/formatters';
 
 export default function Navbar({
@@ -8,7 +8,6 @@ export default function Navbar({
   onOpenQuickSale,
   onRefresh,
   loading,
-  onLock,
 }) {
   const todayStr = getTodayDateString();
 
@@ -47,16 +46,6 @@ export default function Navbar({
           className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors active:scale-95 disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-600' : ''}`} />
-        </button>
-
-        {/* Lock Screen button */}
-        <button
-          onClick={onLock}
-          title="Lock Studio (പാസ്‌വേഡ് ലോക്ക്)"
-          className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors active:scale-95 flex items-center gap-1.5"
-        >
-          <Lock className="w-4 h-4" />
-          <span className="text-xs font-semibold hidden md:inline">Lock</span>
         </button>
 
         {/* Quick Sale Button */}

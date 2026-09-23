@@ -4,7 +4,6 @@ import Navbar from './components/Navbar';
 import QuickSaleModal from './components/QuickSaleModal';
 import EditTransactionModal from './components/EditTransactionModal';
 import Toast from './components/Toast';
-import LockScreen from './components/LockScreen';
 
 import Dashboard from './pages/Dashboard';
 import DailySales from './pages/DailySales';
@@ -21,11 +20,6 @@ export default function App() {
   const [settings, setSettings] = useState(null);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  // Security / Lock Screen State
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return sessionStorage.getItem('studio_authenticated') === 'true';
-  });
 
   // Modals & Toast State
   const [isQuickSaleOpen, setIsQuickSaleOpen] = useState(false);
@@ -118,29 +112,6 @@ export default function App() {
     }
   };
 
-  const handleLock = () => {
-    sessionStorage.removeItem('studio_authenticated');
-    setIsAuthenticated(false);
-    showToast('Studio locked (ലോക്ക് ചെയ്തു)', 'info');
-  };
-
-  // If user has not authenticated yet, show Lock Screen
-  if (!isAuthenticated) {
-    return (
-      <>
-        <LockScreen
-          businessName={settings?.business_name}
-          onUnlock={() => {
-            setIsAuthenticated(true);
-            loadInitialData();
-          }}
-          showToast={showToast}
-        />
-        <Toast toast={toast} onClose={() => setToast(null)} />
-      </>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans">
       {/* Sidebar Navigation */}
@@ -160,7 +131,6 @@ export default function App() {
           onOpenQuickSale={() => setIsQuickSaleOpen(true)}
           onRefresh={loadInitialData}
           loading={loading}
-          onLock={handleLock}
         />
 
         {/* Tab Content */}

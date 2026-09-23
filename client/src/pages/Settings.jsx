@@ -11,11 +11,6 @@ import {
   Sparkles,
   Info,
   Database,
-  Lock,
-  KeyRound,
-  Eye,
-  EyeOff,
-  ShieldCheck,
 } from 'lucide-react';
 import { formatINR } from '../utils/formatters';
 import { api } from '../services/api';
@@ -40,12 +35,7 @@ export default function Settings({
     rent_default_applicable: 1,
   });
 
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -71,41 +61,6 @@ export default function Settings({
       ...prev,
       [name]: type === 'checkbox' ? (checked ? 1 : 0) : value,
     }));
-  };
-
-  const handleUpdatePassword = async (e) => {
-    if (e) e.preventDefault();
-    if (!currentPassword.trim()) {
-      showToast('നിലവിലെ പാസ്‌വേഡ് നൽകുക (Current owner password required)', 'error');
-      return;
-    }
-    if (!newPassword.trim()) {
-      showToast('പുതിയ പാസ്‌വേഡ് നൽകുക (New password required)', 'error');
-      return;
-    }
-    if (newPassword.trim().length < 3) {
-      showToast('കുറഞ്ഞത് 3 അക്ഷരങ്ങൾ വേണം (Minimum 3 characters)', 'error');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      showToast('പാസ്‌വേഡുകൾ തമ്മിൽ പൊരുത്തപ്പെടുന്നില്ല (Passwords do not match)', 'error');
-      return;
-    }
-
-    try {
-      setIsUpdatingPassword(true);
-      const res = await api.changePassword(currentPassword.trim(), newPassword.trim());
-      if (res.success) {
-        showToast('ഉടമസ്ഥന്റെ പാസ്‌വേഡ് മാറ്റി! (Owner password updated successfully)', 'success');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      }
-    } catch (err) {
-      showToast(err.message || 'Current password incorrect. Only owner can change.', 'error');
-    } finally {
-      setIsUpdatingPassword(false);
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -408,94 +363,7 @@ export default function Settings({
           </div>
         </div>
 
-        {/* Section 5: Security & Password Protection */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-            <Lock className="w-4 h-4 text-indigo-600" />
-            <h4 className="font-bold text-sm text-slate-900 uppercase tracking-wider">
-              5. Studio Owner Password & Security (ഉടമസ്ഥന്റെ പാസ്‌വേഡ് സുരക്ഷ)
-            </h4>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Current Owner Password (നിലവിലെ പാസ്‌വേഡ്)</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password to verify owner..."
-                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="p-1 text-slate-400 hover:text-slate-700 absolute right-2.5 top-2 rounded-lg transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>New Password / PIN (പുതിയ പാസ്‌വേഡ്)</span>
-                </label>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password (min 3 digits)..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Confirm New Password (സ്ഥിരീകരിക്കുക)
-                </label>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={handleUpdatePassword}
-                disabled={isUpdatingPassword || !currentPassword || !newPassword}
-                className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>{isUpdatingPassword ? 'Updating...' : 'Update Owner Password (പാസ്‌വേഡ് മാറ്റുക)'}</span>
-              </button>
-            </div>
-
-            <div className="p-4 bg-indigo-50/70 rounded-2xl border border-indigo-100 text-xs text-indigo-950 flex flex-col justify-center space-y-2">
-              <div className="flex items-center gap-1.5 font-bold text-indigo-900">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Owner Verification Protected</span>
-              </div>
-              <p className="text-[11px] text-indigo-900/80 leading-relaxed">
-                ഉടമസ്ഥന് മാത്രമേ നിലവിലെ പാസ്‌വേഡ് ഉപയോഗിച്ച് പുതിയ പാസ്‌വേഡ് മാറ്റാൻ സാധിക്കൂ. കൗണ്ടറിലുള്ള മറ്റാർക്കും പാസ്‌വേഡ് മാറ്റാൻ അനുവാദമില്ല.
-              </p>
-              <p className="text-[10px] text-slate-500">
-                Only the studio owner who enters the correct current password can update the password.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 6: Save & Demo Data Actions */}
+        {/* Save & Demo Data Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
           <div className="flex items-center gap-2">
             {onSeedSample && (
