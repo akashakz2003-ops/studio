@@ -1,4 +1,4 @@
-const initSqlJs = require('sql.js/dist/sql-asm.js');
+const initSqlJs = require('./sql-asm.js');
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');

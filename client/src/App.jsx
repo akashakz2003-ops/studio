@@ -39,20 +39,38 @@ export default function App() {
       const today = getTodayDateString();
       const month = getCurrentMonthString();
 
-      const [settingsRes, statsRes] = await Promise.all([
+      const [settingsRes, statsRes] = await Promise.allSettled([
         api.getSettings(),
         api.getDashboardStats(today, month),
       ]);
 
-      if (settingsRes.success) {
-        setSettings(settingsRes.data);
+      if (settingsRes.status === 'fulfilled' && settingsRes.value?.success) {
+        setSettings(settingsRes.value.data);
+      } else {
+        // Fallback default settings if server is slow or initializing
+        setSettings((prev) => prev || {
+          business_name: 'Photo & Photostat Studio',
+          passport_base_qty: 4,
+          passport_base_price: 200,
+          passport_reprint_price: 100,
+          photostat_price_per_copy: 4,
+          staff_salary_monthly: 15600,
+          rent_daily_rate: 600,
+          electricity_monthly: 1500,
+          currency_symbol: '₹',
+          currency_code: 'INR',
+          rent_default_applicable: 1,
+        });
       }
-      if (statsRes.success) {
-        setStats(statsRes);
+
+      if (statsRes.status === 'fulfilled' && statsRes.value?.success) {
+        setStats(statsRes.value);
+      } else if (settingsRes.status === 'rejected' && statsRes.status === 'rejected') {
+        const errorReason = statsRes.reason?.message || settingsRes.reason?.message || 'Server error';
+        showToast('Connecting to server database: ' + errorReason, 'error');
       }
     } catch (err) {
       console.error('Failed to load initial studio data:', err);
-      showToast('Could not connect to server database: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -143,6 +161,7 @@ export default function App() {
               onEditTransaction={(tx) => setEditingTransaction(tx)}
               onNavigate={(tab) => setActiveTab(tab)}
               onSeedSample={handleSeedSample}
+              onRefresh={loadInitialData}
             />
           )}
 

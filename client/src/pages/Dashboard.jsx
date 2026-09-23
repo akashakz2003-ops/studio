@@ -43,8 +43,29 @@ export default function Dashboard({
   onEditTransaction,
   onNavigate,
   onSeedSample,
+  onRefresh,
 }) {
-  if (!stats) return null;
+  if (!stats) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-xs my-8 max-w-lg mx-auto">
+        <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-4">
+          <Sparkles className="w-7 h-7 text-indigo-600 animate-pulse" />
+        </div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">Loading Studio Financials...</h3>
+        <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+          Retrieving sales data, rent tracking records, and operating calculations.
+        </p>
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
+          >
+            Refresh Data
+          </button>
+        )}
+      </div>
+    );
+  }
 
   const { today, thisMonth, revenueBreakdown, expenseBreakdown, insights, recentTransactions } = stats;
 

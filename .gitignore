@@ -8,6 +8,7 @@ client/dist/
 
 # SQLite database
 data/*.db
+!data/studio_finance.db
 data/*.db-journal
 
 # Logs

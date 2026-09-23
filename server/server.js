@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { initDb } = require('./db');
 const apiRoutes = require('./routes/api');
 
@@ -9,6 +10,13 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Safe req.body guard
+app.use((req, res, next) => {
+  if (!req.body) req.body = {};
+  next();
+});
 
 // Ensure database is initialized before handling any requests (crucial for Vercel serverless)
 let dbInitPromise = null;
@@ -20,34 +28,47 @@ app.use(async (req, res, next) => {
     await dbInitPromise;
     next();
   } catch (err) {
+    dbInitPromise = null; // allow retry on next request
     console.error('Failed to initialize database:', err);
     res.status(500).json({ success: false, error: 'Database initialization failed: ' + err.message });
   }
+});
+
+// Health check endpoints
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // API endpoints (mounted on both /api and root / for Vercel serverless compatibility)
 app.use('/api', apiRoutes);
 app.use(apiRoutes);
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Serve frontend build if exists
+// Serve frontend build from public or client/dist
+const publicPath = path.join(__dirname, '..', 'public');
 const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
-app.use(express.static(clientDistPath));
+
+if (fs.existsSync(publicPath)) {
+  app.use(express.static(publicPath));
+} else if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+}
 
 // Fallback for SPA routing (Express 5 compatible)
 app.use((req, res, next) => {
   if (req.method !== 'GET') return next();
   if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/settings') || req.path.startsWith('/daily-sales') || req.path.startsWith('/transactions') || req.path.startsWith('/expenses') || req.path.startsWith('/rent-days') || req.path.startsWith('/reports') || req.path.startsWith('/export') || req.path.startsWith('/dashboard')) return next();
-  const indexHtml = path.join(clientDistPath, 'index.html');
-  res.sendFile(indexHtml, err => {
-    if (err) {
-      res.status(200).send('Studio Financial Management API server is running on port ' + PORT);
-    }
-  });
+  
+  const indexHtml = fs.existsSync(path.join(publicPath, 'index.html'))
+    ? path.join(publicPath, 'index.html')
+    : path.join(clientDistPath, 'index.html');
+
+  if (fs.existsSync(indexHtml)) {
+    return res.sendFile(indexHtml);
+  }
+  res.status(200).send('Studio Financial Management API server is running on port ' + PORT);
 });
 
 // Error handling middleware

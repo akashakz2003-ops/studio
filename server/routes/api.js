@@ -20,6 +20,34 @@ function getDaysInMonth(year, month) {
   return new Date(year, month, 0).getDate();
 }
 
+const DEFAULT_SETTINGS = {
+  id: 1,
+  business_name: 'Modern Photo & Photostat Studio',
+  passport_base_qty: 4,
+  passport_base_price: 200,
+  passport_reprint_price: 100,
+  photostat_price_per_copy: 4,
+  staff_salary_monthly: 15600,
+  rent_daily_rate: 600,
+  electricity_monthly: 1500,
+  currency_symbol: '₹',
+  currency_code: 'INR',
+  rent_default_applicable: 1,
+  is_password_set: false,
+};
+
+function getSafeSettings() {
+  try {
+    const s = queryOne('SELECT * FROM settings WHERE id = 1');
+    if (s) {
+      const { app_password, ...safe } = s;
+      safe.is_password_set = false;
+      return { ...DEFAULT_SETTINGS, ...safe };
+    }
+  } catch (_) {}
+  return { ...DEFAULT_SETTINGS };
+}
+
 // -------------------------------------------------------------
 // AUTHENTICATION & SECURITY ENDPOINTS
 // -------------------------------------------------------------
@@ -74,13 +102,8 @@ router.post('/auth/change-password', (req, res) => {
 // -------------------------------------------------------------
 router.get('/settings', (req, res) => {
   try {
-    const settings = queryOne('SELECT * FROM settings WHERE id = 1');
-    if (settings) {
-      const { app_password, ...safeSettings } = settings;
-      safeSettings.is_password_set = false;
-      return res.json({ success: true, data: safeSettings });
-    }
-    res.json({ success: true, data: settings });
+    const safeSettings = getSafeSettings();
+    return res.json({ success: true, data: safeSettings });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -152,7 +175,7 @@ router.put('/settings', (req, res) => {
 // -------------------------------------------------------------
 router.get('/rent-days', (req, res) => {
   try {
-    const settings = queryOne('SELECT * FROM settings WHERE id = 1');
+    const settings = getSafeSettings();
     const month = req.query.month || getMonthString(getTodayDateString()); // YYYY-MM
     const [yearStr, monthStr] = month.split('-');
     const year = parseInt(yearStr, 10);
@@ -215,7 +238,7 @@ router.post('/rent-days/toggle', (req, res) => {
       return res.status(400).json({ success: false, error: 'Date is required' });
     }
 
-    const settings = queryOne('SELECT * FROM settings WHERE id = 1');
+    const settings = getSafeSettings();
     const now = new Date().toISOString();
     const appVal = applicable ? 1 : 0;
 
@@ -246,7 +269,7 @@ router.post('/rent-days/bulk', (req, res) => {
       return res.status(400).json({ success: false, error: 'Month (YYYY-MM) is required' });
     }
 
-    const settings = queryOne('SELECT * FROM settings WHERE id = 1');
+    const settings = getSafeSettings();
     const [yearStr, monthStr] = month.split('-');
     const year = parseInt(yearStr, 10);
     const m = parseInt(monthStr, 10);
@@ -295,7 +318,7 @@ router.post('/rent-days/bulk', (req, res) => {
 router.get('/daily-sales', (req, res) => {
   try {
     const date = req.query.date || getTodayDateString();
-    const settings = queryOne('SELECT * FROM settings WHERE id = 1');
+    const settings = getSafeSettings();
 
     // Get all income transactions for this date
     const transactions = query(
@@ -365,7 +388,7 @@ router.post('/daily-sales/quick-entry', (req, res) => {
       otherDescription = '',
     } = req.body;
 
-    const settings = queryOne('SELECT * FROM settings WHERE id = 1');
+    const settings = getSafeSettings();
     const createdTransactions = [];
     const now = new Date().toISOString();
 
@@ -617,7 +640,7 @@ router.delete('/transactions/:id', (req, res) => {
 router.get('/expenses', (req, res) => {
   try {
     const month = req.query.month || getMonthString(getTodayDateString());
-    const settings = queryOne('SELECT * FROM settings WHERE id = 1');
+    const settings = getSafeSettings();
 
     // 1. Manual expenses in this month
     const manualExpenses = query(
@@ -716,7 +739,7 @@ router.get('/dashboard/stats', (req, res) => {
   try {
     const today = req.query.date || getTodayDateString();
     const month = req.query.month || getMonthString(today);
-    const settings = queryOne('SELECT * FROM settings WHERE id = 1');
+    const settings = getSafeSettings();
 
     // 1. Today's Revenue
     const todayIncomes = query(
@@ -898,7 +921,7 @@ router.get('/dashboard/stats', (req, res) => {
 router.get('/reports/monthly', (req, res) => {
   try {
     const month = req.query.month || getMonthString(getTodayDateString());
-    const settings = queryOne('SELECT * FROM settings WHERE id = 1');
+    const settings = getSafeSettings();
 
     const [yearStr, monthStr] = month.split('-');
     const year = parseInt(yearStr, 10);
